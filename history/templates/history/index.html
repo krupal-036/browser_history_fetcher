@@ -1,0 +1,528 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser History Fetcher</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    main {
+      flex: 1;
+    }
+
+    .card-header {
+      background-color: #f8f9fa;
+      border-bottom: 1px solid rgba(0, 0, 0, .125);
+    }
+
+    .table-hover tbody tr:hover {
+      background-color: rgba(0, 0, 0, .05);
+    }
+
+    .navbar-brand {
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.9em;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn-primary {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+    }
+
+    .btn-primary:hover {
+      background-color: #0b5ed7;
+      border-color: #0a58ca;
+    }
+
+    .btn-success {
+      background-color: #198754;
+      border-color: #198754;
+    }
+
+    .btn-success:hover {
+      background-color: #157347;
+      border-color: #146c43;
+    }
+
+    .copy-feedback {
+      position: absolute;
+      top: -30px;
+      right: 0;
+      background-color: #333;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
+    }
+
+    .url-container {
+      position: relative;
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm sticky-top">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <i class="bi bi-browser-chrome me-2"></i>Browser History Fetcher
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#"><i class="bi bi-house-door me-1"></i>Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#howToModal">
+              <i class="bi bi-question-circle me-1"></i>How to Use
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container py-5">
+    <!-- Header Section -->
+    <div class="row mb-4">
+      <div class="col-lg-8">
+        <h1 class="display-5 fw-bold mb-3">Browser History Fetcher</h1>
+        <p class="lead text-muted mb-0">
+          <i class="bi bi-shield-check me-2"></i>Reads from a safe temporary copy to avoid lock errors.
+        </p>
+      </div>
+      <div class="col-lg-4 d-flex align-items-center justify-content-lg-end mt-3 mt-lg-0">
+        <span class="badge bg-secondary text-wrap"></span>
+      </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Options</h5>
+      </div>
+      <div class="card-body">
+        <form id="fetch-form" class="row g-3">
+          <div class="col-md-4">
+            <label for="browser" class="form-label fw-bold">Browser</label>
+            <select class="form-select" id="browser" name="browser">
+              <option value="auto" selected>Auto</option>
+              <option value="chrome">Chrome</option>
+              <option value="edge">Edge</option>
+              <option value="firefox">Firefox</option>
+            </select>
+            <div class="form-text">Select browser type</div>
+          </div>
+          <div class="col-md-6">
+            <label for="path" class="form-label fw-bold">Custom DB path (optional)</label>
+            <input type="text" class="form-control" id="path" name="path"
+              placeholder="Full path to History or places.sqlite">
+            <div class="form-text">Detected paths: <code>{{ paths|escape }}</code></div>
+          </div>
+          <div class="col-md-2">
+            <label for="limit" class="form-label fw-bold">Limit</label>
+            <input type="number" class="form-control" id="limit" name="limit" value="200" min="1" max="10000">
+            <div class="form-text">Max results</div>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-search me-2"></i>Fetch History
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Insights Section -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Top 5 Most Visited Sites</h5>
+      </div>
+      <div class="card-body">
+        <div id="insights">
+          <ul class="list-group list-group-flush" id="top-5-list">
+            <li class="list-group-item text-center text-muted">No data available yet. Fetch history first.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download Button -->
+    <div class="d-flex justify-content-end mb-3">
+      <button id="download-domains" class="btn btn-success" disabled>
+        <i class="bi bi-download me-2"></i>Download Unique Domains (HTML)
+      </button>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-table me-2"></i>Browsing History Results</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0" id="results-table">
+            <thead class="table-light">
+              <tr>
+                <th scope="col" class="text-center" style="width: 5%;">#</th>
+                <th scope="col" style="width: 25%;">Title</th>
+                <th scope="col" style="width: 40%;">URL</th>
+                <th scope="col" class="text-center" style="width: 10%;">Visit Count</th>
+                <th scope="col" class="text-center" style="width: 20%;">Visited (UTC)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                  No results. Submit the form to fetch browser history.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white py-4 mt-auto">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+            <p class="mb-0">© <span id="current-year"></span> Browser History Fetcher. All rights reserved.</p>
+            <script>
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+            </script>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <div class="d-flex justify-content-md-end gap-3 flex-wrap">
+            <a href="https://github.com/krupal-036/historyfetcher" target="_blank" class="text-white text-decoration-none">
+              <i class="bi bi-github me-1"></i>GitHub
+            </a>
+            <a href="https://krupal.vercel.com" target="_blank" class="text-white text-decoration-none">
+              <i class="bi bi-person-badge me-1"></i>Portfolio
+            </a>
+            <a href="mailto:kruplafataniya007@gmail.com" class="text-white text-decoration-none">
+              <i class="bi bi-envelope me-1"></i>Email
+            </a>
+            <a href="https://www.linkedin.com/in/krupal-fataniya/" target="_blank"
+              class="text-white text-decoration-none">
+              <i class="bi bi-linkedin me-1"></i>LinkedIn
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- How to Use Modal -->
+  <div class="modal fade" id="howToModal" tabindex="-1" aria-labelledby="howToModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="howToModalLabel">How to Use Browser History Fetcher</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6><i class="bi bi-1-circle me-2"></i>Select Browser</h6>
+          <p>Choose the browser you want to fetch history from. The "Auto" option will attempt to detect the browser
+            automatically.</p>
+
+          <h6><i class="bi bi-2-circle me-2"></i>Custom DB Path (Optional)</h6>
+          <p>If the automatic detection fails, you can provide the full path to the browser's history database file.</p>
+
+          <h6><i class="bi bi-3-circle me-2"></i>Set Limit</h6>
+          <p>Specify the maximum number of history entries to fetch (between 1 and 10,000).</p>
+
+          <h6><i class="bi bi-4-circle me-2"></i>Fetch History</h6>
+          <p>Click the "Fetch History" button to retrieve the browser history.</p>
+
+          <h6><i class="bi bi-5-circle me-2"></i>View Results</h6>
+          <p>The results will be displayed in a table. You can also see the top 5 most visited sites in the insights
+            section.</p>
+
+          <h6><i class="bi bi-6-circle me-2"></i>Download Unique Domains</h6>
+          <p>Click the "Download Unique Domains" button to download an HTML file containing all unique domains from your
+            history.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Core functionality - fetch history
+    async function fetchHistory(params) {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`/api/history/?${qs}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    // Get DOM elements
+    const form = document.getElementById('fetch-form');
+    const tbody = document.querySelector('#results-table tbody');
+    const top5List = document.getElementById('top-5-list');
+    const downloadBtn = document.getElementById('download-domains');
+
+    // Form submission handler
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Show loading state
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 mb-0">Fetching browser history...</p>
+          </td>
+        </tr>
+      `;
+      top5List.innerHTML = '<li class="list-group-item text-center text-muted">Calculating insights...</li>';
+      downloadBtn.disabled = true;
+
+      // Get form data
+      const formData = new FormData(form);
+      const params = Object.fromEntries(formData.entries());
+
+      try {
+        // Fetch history data
+        const data = await fetchHistory(params);
+        tbody.innerHTML = '';
+
+        // Handle empty results
+        if (data.results.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="text-center py-4">
+                <i class="bi bi-exclamation-triangle display-6 d-block mb-2 text-warning"></i>
+                No results found. Try a custom path or close the browser and retry.
+              </td>
+            </tr>
+          `;
+          top5List.innerHTML = '<li class="list-group-item text-center text-muted">No data available.</li>';
+          return;
+        }
+
+        // Populate table with results
+        data.results.forEach((row, idx) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="text-center">${idx + 1}</td>
+            <td>${(row.title || 'Untitled').replace(/</g, '&lt;')}</td>
+            <td>
+              <a href="${row.url}" target="_blank" rel="noopener" class="text-break">
+                ${row.url}
+              </a>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-secondary">${row.visit_count}</span>
+            </td>
+            <td class="text-center">${row.visited_at_utc || 'N/A'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Calculate top 5 visited URLs
+        const visitCounts = {};
+        data.results.forEach(r => {
+          try {
+            const domain = new URL(r.url).hostname;
+            visitCounts[domain] = (visitCounts[domain] || 0) + r.visit_count;
+          } catch (e) {
+            console.error('Error parsing URL:', r.url, e);
+          }
+        });
+
+        const top5 = Object.entries(visitCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+
+        top5List.innerHTML = '';
+        if (top5.length === 0) {
+          top5List.innerHTML = '<li class="list-group-item text-center text-muted">No domain data available.</li>';
+        } else {
+          top5.forEach(([domain, count]) => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item';
+            li.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                  <strong>${domain}</strong>
+                  <span class="badge bg-primary ms-2">${count} visits</span>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-secondary copy-domain-btn" data-domain="${domain}">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                  <button type="button" class="btn btn-outline-primary visit-domain-btn" data-domain="${domain}">
+                    <i class="bi bi-box-arrow-up-right"></i> Visit Now
+                  </button>
+                </div>
+              </div>
+            `;
+            top5List.appendChild(li);
+          });
+        }
+
+        // Enable download button for unique domains
+        const uniqueDomains = Array.from(new Set(data.results.map(r => {
+          try { return new URL(r.url).origin; } catch { return null; }
+        }).filter(Boolean)));
+
+        downloadBtn.disabled = false;
+        downloadBtn.onclick = () => {
+          const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unique Domains</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body { padding: 2rem; }
+    .container { max-width: 1000px; }
+    .copy-feedback {
+      position: absolute;
+      top: -30px;
+      right: 0;
+      background-color: #333;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .copy-feedback.show {
+      opacity: 1;
+    }
+    .url-container {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4">Unique Domains</h1>
+    <p class="lead">Generated on ${new Date().toLocaleString()}</p>
+    <p class="mb-4">Total unique domains: ${uniqueDomains.length}</p>
+    <div class="list-group">
+      ${uniqueDomains.map(d => `
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+          <div class="url-container flex-grow-1">
+            <a href="${d}" target="_blank" rel="noopener" class="text-break">${d}</a>
+            <div class="copy-feedback">Copied!</div>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary copy-btn ms-2" data-url="${d}">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+  <script>
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.copy-btn')) {
+        const btn = e.target.closest('.copy-btn');
+        const url = btn.getAttribute('data-url');
+        navigator.clipboard.writeText(url).then(() => {
+          const feedback = btn.parentElement.querySelector('.copy-feedback');
+          feedback.classList.add('show');
+          setTimeout(() => {
+            feedback.classList.remove('show');
+          }, 2000);
+        });
+      }
+    });
+  <\/script>
+</body>
+</html>`;
+
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'unique_domains.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+      } catch (err) {
+        // Handle errors
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center py-4">
+              <i class="bi bi-exclamation-circle display-6 d-block mb-2 text-danger"></i>
+              <div class="text-danger">Error: ${err.message}</div>
+            </td>
+          </tr>
+        `;
+        top5List.innerHTML = '<li class="list-group-item text-center text-muted">Error loading data.</li>';
+      }
+    });
+
+    // Handle copy domain button clicks
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.copy-domain-btn')) {
+        const btn = e.target.closest('.copy-domain-btn');
+        const domain = btn.getAttribute('data-domain');
+        navigator.clipboard.writeText(domain).then(() => {
+          const originalHTML = btn.innerHTML;
+          btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-success');
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+          }, 2000);
+        });
+      }
+
+      if (e.target.closest('.visit-domain-btn')) {
+        const btn = e.target.closest('.visit-domain-btn');
+        const domain = btn.getAttribute('data-domain');
+        window.open(`https://${domain}`, '_blank');
+      }
+    });
+  </script>
+</body>
+
+</html>
