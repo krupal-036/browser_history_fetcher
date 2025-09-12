@@ -1,4 +1,0 @@
-# .env file example
-# Generate a new secret key for Django
-SECRET_KEY='your-generated-django-secret-key'
-DEBUG=False

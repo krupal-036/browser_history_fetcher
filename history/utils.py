@@ -20,21 +20,29 @@ def default_paths():
         'chrome': [],
         'edge': [],
         'firefox': [],
+        'opera': [],
+        'brave': []
     }
     if plat == 'windows':
         local = os.environ.get('LOCALAPPDATA', '')
         roaming = os.environ.get('APPDATA', '')
         paths['chrome'] = [os.path.join(local, r'Google\Chrome\User Data\Default\History')]
         paths['edge']   = [os.path.join(local, r'Microsoft\Edge\User Data\Default\History')]
+        paths['opera']  = [os.path.join(local, r'Opera Software\Opera Stable\History')]
+        paths['brave']  = [os.path.join(local, r'BraveSoftware\Brave-Browser\User Data\Default\History')]
         paths['firefox'] = glob.glob(os.path.join(roaming, r'Mozilla\Firefox\Profiles\*.default-release\places.sqlite'))
     elif plat == 'mac':
         base = os.path.join(home, 'Library', 'Application Support')
         paths['chrome'] = [os.path.join(base, 'Google', 'Chrome', 'Default', 'History')]
         paths['edge']   = [os.path.join(base, 'Microsoft Edge', 'Default', 'History')]
+        paths['opera']  = [os.path.join(base, 'com.operasoftware.Opera', 'History')]
+        paths['brave']  = [os.path.join(base, 'BraveSoftware', 'Brave-Browser', 'Default', 'History')]
         paths['firefox'] = glob.glob(os.path.join(base, 'Firefox', 'Profiles', '*.default-release', 'places.sqlite'))
     else:
         paths['chrome'] = [os.path.join(home, '.config', 'google-chrome', 'Default', 'History')]
         paths['edge']   = [os.path.join(home, '.config', 'microsoft-edge', 'Default', 'History')]
+        paths['opera']  = [os.path.join(home, '.config', 'opera', 'History')]
+        paths['brave']  = [os.path.join(home, '.config', 'brave', 'Default', 'History')]
         paths['firefox'] = glob.glob(os.path.join(home, '.mozilla', 'firefox', '*.default-release', 'places.sqlite'))
     for k, v in paths.items():
         paths[k] = [p for p in v if os.path.exists(p)]
@@ -142,7 +150,7 @@ def fetch_history(browser='auto', path=None, limit=200):
         else:
             return read_chrome_like(path, limit=limit)
     paths = default_paths()
-    ordered = ['chrome', 'edge', 'firefox'] if browser == 'auto' else [browser]
+    ordered = ['chrome', 'edge', 'opera', 'brave', 'firefox'] if browser == 'auto' else [browser]
     for b in ordered:
         for p in paths.get(b, []):
             try:
